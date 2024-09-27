@@ -95,13 +95,13 @@ func (f *SelectProcessFrame) makeSelector() *fyne.Container {
 		options = append(options, x.String())
 	}
 	interval := widget.NewSelect(options, nil)
-	interval.Selected = options[2]
+	interval.Selected = options[defaultInterval]
 	list.OnSelected = func(id widget.ListItemID) {
 		defer list.UnselectAll()
 		if id >= len(selection) {
 			return
 		}
-		t := intervals[2]
+		t := intervals[defaultInterval]
 		for i, o := range options {
 			if interval.Selected == o {
 				t = intervals[i]

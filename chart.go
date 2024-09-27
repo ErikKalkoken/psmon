@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"math"
+	"strconv"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -13,26 +15,28 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/dustin/go-humanize"
+	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/process"
 	"github.com/wcharczuk/go-chart"
 	"github.com/wcharczuk/go-chart/drawing"
 )
 
-type sample struct {
-	memory    int
-	timestamp time.Time
-}
-
 type ChartFrame struct {
-	content *fyne.Container
-	closeC  *chan struct{}
-	u       *UI
+	numCores int
+	content  *fyne.Container
+	closeC   *chan struct{}
+	u        *UI
 }
 
 func NewChartFrame(u *UI) *ChartFrame {
+	c, err := cpu.Counts(true)
+	if err != nil {
+		log.Fatal(err)
+	}
 	f := &ChartFrame{
-		content: container.NewCenter(widget.NewLabel("Select a process to start")),
-		u:       u,
+		content:  container.NewCenter(widget.NewLabel("Select a process to start")),
+		numCores: c,
+		u:        u,
 	}
 	return f
 }
@@ -69,14 +73,19 @@ func (f *ChartFrame) Start(pid int32, t time.Duration) error {
 				if err != nil {
 					log.Fatal(err)
 				}
+				cpu, err := p.Percent(0)
+				if err != nil {
+					log.Fatal(err)
+				}
 				vv = append(vv, sample{
 					memory:    int(stats.RSS - stats.Shared),
+					cpu:       cpu / float64(f.numCores),
 					timestamp: time.Now(),
 				})
 				if len(vv) == 0 {
 					return
 				}
-				title := fmt.Sprintf("%s [%d] - Memory usage over time (T=%v)", name, pid, t)
+				title := fmt.Sprintf("%s [%d] (T=%v)", name, pid, t)
 				c, err := f.makeChart(title, vv)
 				if err != nil {
 					return
@@ -95,6 +104,12 @@ func (f *ChartFrame) Start(pid int32, t time.Duration) error {
 		}
 	}()
 	return nil
+}
+
+type sample struct {
+	memory    int
+	cpu       float64
+	timestamp time.Time
 }
 
 func (f *ChartFrame) makeChart(title string, d []sample) (fyne.CanvasObject, error) {
@@ -119,17 +134,28 @@ func (f *ChartFrame) makeChart(title string, d []sample) (fyne.CanvasObject, err
 }
 
 func makeRawChart(d []sample, w, h int) ([]byte, error) {
-	xv := make([]time.Time, len(d))
-	yv := make([]float64, len(d))
+	xTime := make([]time.Time, len(d))
+	yMemory := make([]float64, len(d))
+	yCPU := make([]float64, len(d))
 	for i, v := range d {
-		xv[i] = v.timestamp
-		yv[i] = float64(v.memory)
+		xTime[i] = v.timestamp
+		yMemory[i] = float64(v.memory)
+		yCPU[i] = math.Round(v.cpu)
 	}
 	series := []chart.Series{
 		chart.TimeSeries{
+			Name:    "Memory",
 			Style:   chart.StyleTextDefaults(),
-			XValues: xv,
-			YValues: yv,
+			XValues: xTime,
+			YValues: yMemory,
+			YAxis:   chart.YAxisPrimary,
+		},
+		chart.TimeSeries{
+			Name:    "CPU",
+			Style:   chart.StyleTextDefaults(),
+			XValues: xTime,
+			YValues: yCPU,
+			YAxis:   chart.YAxisSecondary,
 		},
 	}
 	defaultStyle := chart.Style{
@@ -166,8 +192,20 @@ func makeRawChart(d []sample, w, h int) ([]byte, error) {
 			ValueFormatter: func(x any) string {
 				v := x.(float64)
 				return humanize.Bytes(uint64(v))
-			}},
+			},
+		},
+		YAxisSecondary: chart.YAxis{
+			Name:  "CPU%",
+			Style: defaultStyle,
+			ValueFormatter: func(x any) string {
+				v := x.(float64)
+				return strconv.Itoa(int(v))
+			},
+		},
 		Series: series,
+	}
+	graph.Elements = []chart.Renderable{
+		chart.Legend(&graph, defaultStyle),
 	}
 	var buf bytes.Buffer
 	if err := graph.Render(chart.PNG, &buf); err != nil {
