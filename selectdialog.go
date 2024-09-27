@@ -17,6 +17,10 @@ import (
 	"github.com/shirou/gopsutil/v4/process"
 )
 
+const (
+	defaultInterval = 0
+)
+
 var intervals = []time.Duration{
 	1 * time.Second,
 	10 * time.Second,
@@ -54,8 +58,7 @@ type entry struct {
 }
 
 func (f *SelectProcessFrame) makeSelector() *fyne.Container {
-	entries := make([]entry, 0)
-	var selection []entry
+	var entries, selection []entry
 	var colLayout columnsLayout
 	list := widget.NewList(
 		func() int {
@@ -83,55 +86,8 @@ func (f *SelectProcessFrame) makeSelector() *fyne.Container {
 			l3.SetText(x.pidStr)
 		},
 	)
-	pids, err := process.Pids()
-	if err != nil {
-		log.Fatal(err)
-	}
-	for _, pid := range pids {
-		p, err := process.NewProcess(pid)
-		if err != nil {
-			continue
-		}
-		name, err := p.Name()
-		if err != nil {
-			continue
-		}
-		username, err := p.Username()
-		if err != nil {
-			continue
-		}
-		entries = append(entries, entry{
-			name:   name,
-			pid:    pid,
-			pidStr: strconv.Itoa(int(pid)),
-			user:   username,
-		})
-	}
-	slices.SortFunc(entries, func(a, b entry) int {
-		return cmp.Compare(strings.ToLower(a.name), strings.ToLower(b.name))
-	})
-	widths := make([]float32, 3)
-	for _, x := range entries {
-		l1 := widget.NewLabel(x.name)
-		w1 := l1.MinSize().Width
-		if widths[0] < w1 {
-			widths[0] = w1
-		}
-		l2 := widget.NewLabel(x.user)
-		w2 := l2.MinSize().Width
-		if widths[1] < w2 {
-			widths[1] = w2
-		}
-		l3 := widget.NewLabel(x.pidStr)
-		w3 := l3.MinSize().Width
-		if widths[2] < w3 {
-			widths[2] = w3
-		}
-	}
-	widths2 := make([]int, 3)
-	for i, v := range widths {
-		widths2[i] = int(math.Ceil(float64(v)))
-	}
+	entries = fetchProcessList()
+	widths2 := maxColWidths(entries)
 	colLayout = columnsLayout(widths2)
 	selection = slices.Clone(entries)
 	var options []string
@@ -191,6 +147,32 @@ func (f *SelectProcessFrame) makeSelector() *fyne.Container {
 	return container.NewBorder(header, form, nil, nil, list)
 }
 
+func maxColWidths(entries []entry) []int {
+	widths := make([]float32, 3)
+	for _, x := range entries {
+		l1 := widget.NewLabel(x.name)
+		w1 := l1.MinSize().Width
+		if widths[0] < w1 {
+			widths[0] = w1
+		}
+		l2 := widget.NewLabel(x.user)
+		w2 := l2.MinSize().Width
+		if widths[1] < w2 {
+			widths[1] = w2
+		}
+		l3 := widget.NewLabel(x.pidStr)
+		w3 := l3.MinSize().Width
+		if widths[2] < w3 {
+			widths[2] = w3
+		}
+	}
+	widths2 := make([]int, 3)
+	for i, v := range widths {
+		widths2[i] = int(math.Ceil(float64(v)))
+	}
+	return widths2
+}
+
 type columnsLayout []int
 
 func (d columnsLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
@@ -223,4 +205,36 @@ func (d columnsLayout) Layout(objects []fyne.CanvasObject, containerSize fyne.Si
 		}
 		pos = pos.AddXY(x+theme.Padding(), 0)
 	}
+}
+
+func fetchProcessList() []entry {
+	entries := make([]entry, 0)
+	pids, err := process.Pids()
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, pid := range pids {
+		p, err := process.NewProcess(pid)
+		if err != nil {
+			continue
+		}
+		name, err := p.Name()
+		if err != nil {
+			continue
+		}
+		username, err := p.Username()
+		if err != nil {
+			continue
+		}
+		entries = append(entries, entry{
+			name:   name,
+			pid:    pid,
+			pidStr: strconv.Itoa(int(pid)),
+			user:   username,
+		})
+	}
+	slices.SortFunc(entries, func(a, b entry) int {
+		return cmp.Compare(strings.ToLower(a.name), strings.ToLower(b.name))
+	})
+	return entries
 }
