@@ -29,6 +29,7 @@ type sample struct {
 
 type ChartFrame struct {
 	content *fyne.Container
+	closeC  *chan struct{}
 	u       *UI
 }
 
@@ -52,6 +53,11 @@ func (f *ChartFrame) Start(pid int32) error {
 	if err != nil {
 		return err
 	}
+	if f.closeC != nil {
+		*f.closeC <- struct{}{}
+	}
+	closeC := make(chan struct{})
+	f.closeC = &closeC
 	go func() {
 		for {
 			f.content.RemoveAll()
@@ -76,7 +82,12 @@ func (f *ChartFrame) Start(pid int32) error {
 				f.content.Add(c)
 			}()
 			f.content.Refresh()
-			<-ticker.C
+			select {
+			case <-ticker.C:
+			case <-closeC:
+				log.Println("watcher closed")
+				return
+			}
 		}
 	}()
 	return nil
