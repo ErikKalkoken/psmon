@@ -34,7 +34,7 @@ type ChartFrame struct {
 
 func NewChartFrame(u *UI) *ChartFrame {
 	f := &ChartFrame{
-		content: container.NewVBox(widget.NewLabel("Select a process to start")),
+		content: container.NewCenter(widget.NewLabel("Select a process to start")),
 		u:       u,
 	}
 	return f
@@ -68,7 +68,7 @@ func (f *ChartFrame) Start(pid int32) error {
 					f.content.Add(widget.NewLabel("No data"))
 					return
 				}
-				c, err := makeChart(name, vv, sampleInterval)
+				c, err := f.makeChart(name, vv, sampleInterval)
 				if err != nil {
 					f.content.Add(widget.NewLabel("No data"))
 					return
@@ -82,14 +82,17 @@ func (f *ChartFrame) Start(pid int32) error {
 	return nil
 }
 
-func makeChart(name string, d []sample, t time.Duration) (fyne.CanvasObject, error) {
-	content, err := makeRawChart(name, d)
+func (f *ChartFrame) makeChart(name string, d []sample, t time.Duration) (fyne.CanvasObject, error) {
+	s := f.u.w.Canvas().Scale()
+	w, h := float32(900), float32(450)
+	content, err := makeRawChart(name, d, int(s*w), int(s*h))
 	if err != nil {
 		return nil, err
 	}
 	r := fyne.NewStaticResource("dummy", content)
 	chart := canvas.NewImageFromResource(r)
-	chart.FillMode = canvas.ImageFillOriginal
+	chart.FillMode = canvas.ImageFillContain
+	chart.SetMinSize(fyne.Size{Width: w, Height: h})
 	title := widget.NewRichTextFromMarkdown(
 		fmt.Sprintf("## %s - Memory usage over time (T=%v)", name, t),
 	)
@@ -102,7 +105,7 @@ func makeChart(name string, d []sample, t time.Duration) (fyne.CanvasObject, err
 	), nil
 }
 
-func makeRawChart(name string, d []sample) ([]byte, error) {
+func makeRawChart(name string, d []sample, w, h int) ([]byte, error) {
 	xv := make([]time.Time, len(d))
 	yv := make([]float64, len(d))
 	for i, v := range d {
@@ -124,8 +127,8 @@ func makeRawChart(name string, d []sample) ([]byte, error) {
 		FillColor:   chart.ColorTransparent,
 	}
 	graph := chart.Chart{
-		Width:  1200,
-		Height: 600,
+		Width:  w,
+		Height: h,
 		Background: chart.Style{
 			FillColor: chart.ColorTransparent,
 			Padding: chart.Box{

@@ -27,7 +27,8 @@ func NewUI() *UI {
 		nil,
 		nil,
 		nil,
-		container.NewCenter(cf.content))
+		cf.content,
+	)
 	u.content = c
 	w.SetContent(c)
 	w.Resize(fyne.Size{Width: 1000, Height: 600})
