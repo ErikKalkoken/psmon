@@ -18,10 +18,6 @@ import (
 	"github.com/wcharczuk/go-chart/drawing"
 )
 
-const (
-	sampleInterval = 1 * time.Second
-)
-
 type sample struct {
 	memory    int
 	timestamp time.Time
@@ -41,10 +37,11 @@ func NewChartFrame(u *UI) *ChartFrame {
 	return f
 }
 
-func (f *ChartFrame) Start(pid int32) error {
+func (f *ChartFrame) Start(pid int32, t time.Duration) error {
 	vv := make([]sample, 0)
 	f.content.RemoveAll()
-	ticker := time.NewTicker(sampleInterval)
+	f.content.Refresh()
+	ticker := time.NewTicker(t)
 	p, err := process.NewProcess(pid)
 	if err != nil {
 		return err
@@ -59,8 +56,14 @@ func (f *ChartFrame) Start(pid int32) error {
 	closeC := make(chan struct{})
 	f.closeC = &closeC
 	go func() {
+		spinner := widget.NewActivity()
+		spinner.Start()
+		placeholder := container.NewHBox(
+			widget.NewLabel(fmt.Sprintf("Collecting data for: %s [%d] (T=%v)...", name, pid, t)),
+			spinner,
+		)
+		f.content.Add(placeholder)
 		for {
-			f.content.RemoveAll()
 			func() {
 				stats, err := p.MemoryInfoEx()
 				if err != nil {
@@ -71,14 +74,15 @@ func (f *ChartFrame) Start(pid int32) error {
 					timestamp: time.Now(),
 				})
 				if len(vv) == 0 {
-					f.content.Add(widget.NewLabel("No data"))
 					return
 				}
-				c, err := f.makeChart(name, vv, sampleInterval)
+				title := fmt.Sprintf("%s [%d] - Memory usage over time (T=%v)", name, pid, t)
+				c, err := f.makeChart(title, vv)
 				if err != nil {
-					f.content.Add(widget.NewLabel("No data"))
 					return
 				}
+				spinner.Stop()
+				f.content.RemoveAll()
 				f.content.Add(c)
 			}()
 			f.content.Refresh()
@@ -93,22 +97,20 @@ func (f *ChartFrame) Start(pid int32) error {
 	return nil
 }
 
-func (f *ChartFrame) makeChart(name string, d []sample, t time.Duration) (fyne.CanvasObject, error) {
+func (f *ChartFrame) makeChart(title string, d []sample) (fyne.CanvasObject, error) {
 	s := f.u.w.Canvas().Scale()
 	w, h := float32(900), float32(450)
-	content, err := makeRawChart(name, d, int(s*w), int(s*h))
+	content, err := makeRawChart(d, int(s*w), int(s*h))
 	if err != nil {
 		return nil, err
 	}
-	r := fyne.NewStaticResource("dummy", content)
+	r := fyne.NewStaticResource("Generated chart", content)
 	chart := canvas.NewImageFromResource(r)
 	chart.FillMode = canvas.ImageFillContain
 	chart.SetMinSize(fyne.Size{Width: w, Height: h})
-	title := widget.NewRichTextFromMarkdown(
-		fmt.Sprintf("## %s - Memory usage over time (T=%v)", name, t),
-	)
+	t := widget.NewRichTextFromMarkdown("## " + title)
 	return container.NewBorder(
-		container.NewHBox(layout.NewSpacer(), title, layout.NewSpacer()),
+		container.NewHBox(layout.NewSpacer(), t, layout.NewSpacer()),
 		nil,
 		nil,
 		nil,
@@ -116,7 +118,7 @@ func (f *ChartFrame) makeChart(name string, d []sample, t time.Duration) (fyne.C
 	), nil
 }
 
-func makeRawChart(name string, d []sample, w, h int) ([]byte, error) {
+func makeRawChart(d []sample, w, h int) ([]byte, error) {
 	xv := make([]time.Time, len(d))
 	yv := make([]float64, len(d))
 	for i, v := range d {
@@ -125,7 +127,6 @@ func makeRawChart(name string, d []sample, w, h int) ([]byte, error) {
 	}
 	series := []chart.Series{
 		chart.TimeSeries{
-			Name:    name,
 			Style:   chart.StyleTextDefaults(),
 			XValues: xv,
 			YValues: yv,
