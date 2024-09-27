@@ -1,4 +1,4 @@
-module example/pwatch
+module example/psmon
 
 go 1.23.1
 
