@@ -1,4 +1,4 @@
-module example/psmon
+module github.com/ErikKalkoken/psmon
 
 go 1.23.1
 
