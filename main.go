@@ -1,6 +1,8 @@
 package main
 
+import "github.com/ErikKalkoken/psmon/internal/ui"
+
 func main() {
-	u := NewUI()
+	u := ui.NewUI()
 	u.ShowAndRun()
 }

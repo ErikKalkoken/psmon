@@ -1,11 +1,14 @@
-package main
+package ui
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"math"
+	"slices"
 	"strconv"
+	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -26,6 +29,10 @@ type ChartFrame struct {
 	content  *fyne.Container
 	closeC   *chan struct{}
 	u        *UI
+	process  *process.Process
+
+	mu      sync.RWMutex
+	samples []sample
 }
 
 func NewChartFrame(u *UI) *ChartFrame {
@@ -42,7 +49,8 @@ func NewChartFrame(u *UI) *ChartFrame {
 }
 
 func (f *ChartFrame) Start(pid int32, t time.Duration) error {
-	vv := make([]sample, 0)
+	f.u.fileMenu.Items[1].Disabled = false
+	f.resetSamples()
 	f.content.RemoveAll()
 	f.content.Refresh()
 	ticker := time.NewTicker(t)
@@ -50,6 +58,7 @@ func (f *ChartFrame) Start(pid int32, t time.Duration) error {
 	if err != nil {
 		return err
 	}
+	f.process = p
 	name, err := p.Name()
 	if err != nil {
 		return err
@@ -77,16 +86,19 @@ func (f *ChartFrame) Start(pid int32, t time.Duration) error {
 				if err != nil {
 					log.Fatal(err)
 				}
-				vv = append(vv, sample{
+				f.mu.Lock()
+				defer f.mu.Unlock()
+				f.samples = append(f.samples, sample{
 					memory:    int(stats.RSS - stats.Shared),
 					cpu:       cpu / float64(f.numCores),
-					timestamp: time.Now(),
+					timestamp: time.Now().UTC(),
 				})
-				if len(vv) == 0 {
+				n := len(f.samples)
+				if n == 0 {
 					return
 				}
-				title := fmt.Sprintf("%s [%d] (T=%v)", name, pid, t)
-				c, err := f.makeChart(title, vv)
+				title := fmt.Sprintf("%s [%d] (T=%v, N=%d)", name, pid, t, n)
+				c, err := f.makeChart(title, f.samples)
 				if err != nil {
 					return
 				}
@@ -98,12 +110,34 @@ func (f *ChartFrame) Start(pid int32, t time.Duration) error {
 			select {
 			case <-ticker.C:
 			case <-closeC:
-				log.Println("watcher closed")
 				return
 			}
 		}
 	}()
 	return nil
+}
+
+func (f *ChartFrame) resetSamples() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.samples = make([]sample, 0)
+}
+
+func (f *ChartFrame) Samples() []sample {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	return slices.Clone(f.samples)
+}
+
+func (f *ChartFrame) Process() (string, error) {
+	if f.process == nil {
+		return "", errors.New("no process")
+	}
+	name, err := f.process.Name()
+	if err != nil {
+		return "", err
+	}
+	return name, nil
 }
 
 type sample struct {

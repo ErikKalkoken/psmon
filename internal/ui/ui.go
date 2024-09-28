@@ -1,4 +1,4 @@
-package main
+package ui
 
 import (
 	"fyne.io/fyne/v2"
@@ -6,13 +6,14 @@ import (
 )
 
 type UI struct {
-	w  fyne.Window
-	a  fyne.App
-	cf *ChartFrame
+	a        fyne.App
+	cf       *ChartFrame
+	w        fyne.Window
+	fileMenu *fyne.Menu
 }
 
 func NewUI() *UI {
-	a := app.New()
+	a := app.NewWithID("psmon.ErikKalkoken.github.com")
 	w := a.NewWindow("Process monitor")
 	u := &UI{w: w, a: a}
 	cf := NewChartFrame(u)
