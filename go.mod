@@ -4,7 +4,7 @@ go 1.23.1
 
 require (
 	fyne.io/fyne/v2 v2.5.1
-	github.com/ErikKalkoken/fyne-datatable v0.0.0-20241002210025-b7e1f4386844
+	github.com/ErikKalkoken/fyne-datatable v0.0.0-20241005143038-83dca81d3e25
 	github.com/dustin/go-humanize v1.0.1
 	github.com/shirou/gopsutil/v4 v4.24.8
 	github.com/wcharczuk/go-chart v2.0.1+incompatible

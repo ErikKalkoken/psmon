@@ -66,7 +66,9 @@ var intervals = []time.Duration{
 
 func (f *SelectProcessFrame) makeSelector() fyne.CanvasObject {
 	dt, err := datatable.New(datatable.Config{
-		Header:       []string{"Name", "User", "PID"},
+		Columns: []datatable.Column{
+			{Title: "Name"}, {Title: "User"}, {Title: "PID"},
+		},
 		FooterHidden: true,
 	})
 	if err != nil {

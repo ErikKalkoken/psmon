@@ -47,6 +47,8 @@ github.com/BurntSushi/toml v1.4.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/ErikKalkoken/fyne-datatable v0.0.0-20241002210025-b7e1f4386844 h1:2n0wAjshufMAAZE/tvafpZxx5jpx/HMVrf3RyqQXAzg=
 github.com/ErikKalkoken/fyne-datatable v0.0.0-20241002210025-b7e1f4386844/go.mod h1:8ZqVXaVIpbi7m7PS9b+CLm0XAMGtq03J+CQornWVpJ8=
+github.com/ErikKalkoken/fyne-datatable v0.0.0-20241005143038-83dca81d3e25 h1:ZuiJmuFcPl40BG6sQ/CJrk+EQy81AFzxnD27bK14voM=
+github.com/ErikKalkoken/fyne-datatable v0.0.0-20241005143038-83dca81d3e25/go.mod h1:A6nQu3URTiLk2+pqD3UDJ79YOVURAgZSl97OFojbYYw=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmVTwzkszR9V5SSuryQ31EELlFMUz1kKyl939pY=
