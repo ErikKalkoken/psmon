@@ -78,7 +78,7 @@ func (f *ChartFrame) Start(pid int32, t time.Duration) error {
 		f.content.Add(placeholder)
 		for {
 			func() {
-				stats, err := p.MemoryInfoEx()
+				stats, err := p.MemoryInfo()
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -89,7 +89,7 @@ func (f *ChartFrame) Start(pid int32, t time.Duration) error {
 				f.mu.Lock()
 				defer f.mu.Unlock()
 				f.samples = append(f.samples, sample{
-					memory:    int(stats.RSS - stats.Shared),
+					memory:    int(stats.RSS),
 					cpu:       cpu / float64(f.numCores),
 					timestamp: time.Now().UTC(),
 				})
